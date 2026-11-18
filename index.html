@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>프로토운영팀 근무스케줄 (v1117-1)</title>
+  <title>프로토운영팀 근무스케줄 (v1117-4)</title>
   <!-- Pretendard Font -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <!-- SheetJS for Excel Export/Import -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
     :root {
       --bg-body: #f1f5f9;
@@ -862,10 +863,11 @@
 
     .shift-entry.my-entry .my-name {
       font-weight: 900;
-      color: #5b21b6;
-      text-decoration: underline;
-      text-decoration-thickness: 1.5px;
-      text-underline-offset: 2px;
+      color: #9a3412;
+      background: #fde047;
+      border-radius: 4px;
+      padding: 0 3px;
+      margin: 0 -3px;
     }
     .entry-text {
       flex: 1;
@@ -1374,6 +1376,7 @@
       <div class="info-subtabs">
         <button id="infoTabAnnual" class="info-subtab active" onclick="switchInfoTab('annual')"><img src="data:image/png;base64,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" class="info-tab-icon" alt="" />연간 팀원별 근무 통계</button>
         <button id="infoTabMonthly" class="info-subtab" onclick="switchInfoTab('monthly')"><img src="data:image/png;base64,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" class="info-tab-icon" alt="" />월간 팀원별 근무 통계</button>
+        <button id="infoTabTemplate" class="info-subtab" style="display:none; font-weight:700;" onclick="switchInfoTab('template')">🗂️ 근무템플릿</button>
       </div>
 
       <!-- 연간 -->
@@ -1449,6 +1452,58 @@
                 </thead>
                 <tbody id="statsTableBody"></tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 근무템플릿 (관리자·팀장만) -->
+      <div id="infoPaneTemplate" class="info-pane" style="display:none; flex-direction:column; gap:18px;">
+        <div class="panel-card">
+          <div class="panel-header"><div class="panel-title">📅 주간 근무 템플릿 설정 (요일별 기준 인원)</div></div>
+          <div class="panel-body">
+        <div class="helper-banner">
+              달력에 <strong>현재/기준</strong>(예: 오전 2/2)으로 표시되는 <strong>기준 인원</strong>입니다. 토·일은 왼쪽 칸이 <strong>풀당직</strong>(오전+오후 모두 근무) 인원입니다.
+            </div>
+            <div id="weekTplBody"></div>
+            <div style="margin-top:10px; display:flex; gap:8px; justify-content:flex-end;">
+              <button class="btn" onclick="resetWeekTemplate()">기본값으로 되돌리기</button>
+              <button class="btn btn-primary" onclick="saveWeekTemplate()">저장</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-card">
+          <div class="panel-header"><div class="panel-title">🔁 토요일 연장 순환 설정 (야구/농구팀)</div></div>
+          <div class="panel-body">
+        <div class="helper-banner">
+              엑셀 업로드 시 토요일 오전 근무자 중 <strong>순환 순서에 해당하는 1명</strong>을 <strong>06:30 ~ 15:30(연장근무)</strong>로 자동 지정합니다. (일요일 오전 근무자는 팀 구분 없이 항상 연장근무)<br/>
+              <strong>시작일</strong>은 그 순환의 <strong>1주차 월요일</strong>이고, <strong>순서</strong>는 팀원 번호를 쉼표로 적습니다. 인원이 바뀌어 로테이션을 새로 만들면 새 시작일의 줄을 추가하세요. (이전 날짜는 이전 줄 규칙이 적용됩니다)
+            </div>
+            <div id="extRotBody" style="display:flex; flex-direction:column; gap:8px; margin-top:10px;"></div>
+            <div style="margin-top:10px; display:flex; gap:8px;">
+              <button class="btn btn-sm" onclick="addExtRotRow()">＋ 줄 추가</button>
+            </div>
+            <div id="extRotPreview" style="margin-top:10px; font-size:0.8rem; color:var(--text-secondary);"></div>
+            <div style="margin-top:14px; padding:10px; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:var(--bg-secondary,#f8fafc);">
+              <div style="font-weight:700; margin-bottom:6px;">📌 이미 입력된 달에 연장근무 적용</div>
+              <div style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:8px;">엑셀 업로드 때가 아니라 이미 달력에 들어 있는 근무에 연장(4번)을 적용합니다. 일요일 오전은 모두 4번으로, 토요일 오전(야구/농구)은 위 순환 순서의 1명을 4번으로 바꿉니다. 이미 4번이 있는 토요일은 그대로 둡니다. <strong>저장한 순환 설정 기준</strong>이므로 먼저 [저장]을 눌러 주세요.</div>
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <input type="month" id="extApplyFrom" class="text-input" style="width:150px;" />
+                <span>~</span>
+                <input type="month" id="extApplyTo" class="text-input" style="width:150px;" />
+                <button class="btn btn-sm btn-primary" onclick="applyExtToRange()">적용</button>
+              </div>
+            </div>
+            <div style="margin-top:10px; display:flex; gap:8px; justify-content:flex-end;">
+              <button class="btn btn-primary" onclick="saveExtRot()">저장</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-card">
+          <div class="panel-header"><div class="panel-title">🧩 근무 템플릿 만들기 (엑셀 없이 패턴 생성)</div></div>
+          <div class="panel-body">
+            <div class="helper-banner" style="margin:0;">
+              준비 중입니다. 오전/오후 인원, 6주·7주 로테이션, 초과근무시간, 주 5일 이하, 전날 오후 근무자 오전 불가 같은 조건을 입력하면 근무 패턴을 만들고, 지정한 날짜부터 달력에 반영하는 기능을 이곳에 추가할 예정입니다.
             </div>
           </div>
         </div>
@@ -1629,10 +1684,6 @@
           • <code>13:00 ~ 22:00</code> → 달력 표기 <strong>13:00~23:00</strong> / 실근무 <strong>8시간</strong> + 초과 <strong>2시간</strong><br/>
           • <code>06:30 ~ 23:00</code> → 달력 표기 <strong>06:30~23:00</strong> / 실근무 <strong>15시간</strong> + 초과 <strong>4시간</strong>
           </div>
-          <div style="display:flex; flex-direction:column; gap:6px;">
-            <button class="tpl-btn" onclick="openWeekTemplateModal()">📅 주간 근무 템플릿 설정</button>
-            <button class="tpl-btn" onclick="openExtRotModal()">🔁 토요일 연장 순환 설정</button>
-          </div>
         </div>
         <div style="max-height:420px; overflow-y:auto; border:1px solid var(--border-color); border-radius:var(--radius-sm);">
           <table class="manage-table">
@@ -1662,59 +1713,7 @@
 
   <!-- 5. Excel Import / Export Modal -->
 
-  <div id="extRotModal" class="modal-backdrop">
-    <div class="modal-box" style="max-width:640px;">
-      <div class="modal-header">
-        <div class="modal-title">🔁 토요일 연장 순환 설정 (야구/농구팀)</div>
-        <button class="modal-close" onclick="closeModal('extRotModal')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="helper-banner">
-          엑셀 업로드 시 토요일 오전 근무자 중 <strong>순환 순서에 해당하는 1명</strong>을 <strong>06:30 ~ 15:30(연장근무)</strong>로 자동 지정합니다. (일요일 오전 근무자는 팀 구분 없이 항상 연장근무)<br/>
-          <strong>시작일</strong>은 그 순환의 <strong>1주차 월요일</strong>이고, <strong>순서</strong>는 팀원 번호를 쉼표로 적습니다. 인원이 바뀌어 로테이션을 새로 만들면 새 시작일의 줄을 추가하세요. (이전 날짜는 이전 줄 규칙이 적용됩니다)
-        </div>
-        <div id="extRotBody" style="display:flex; flex-direction:column; gap:8px; margin-top:10px;"></div>
-        <div style="margin-top:10px; display:flex; gap:8px;">
-          <button class="btn btn-sm" onclick="addExtRotRow()">＋ 줄 추가</button>
-        </div>
-        <div id="extRotPreview" style="margin-top:10px; font-size:0.8rem; color:var(--text-secondary);"></div>
-        <div style="margin-top:14px; padding:10px; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:var(--bg-secondary,#f8fafc);">
-          <div style="font-weight:700; margin-bottom:6px;">📌 이미 입력된 달에 연장근무 적용</div>
-          <div style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:8px;">엑셀 업로드 때가 아니라 이미 달력에 들어 있는 근무에 연장(4번)을 적용합니다. 일요일 오전은 모두 4번으로, 토요일 오전(야구/농구)은 위 순환 순서의 1명을 4번으로 바꿉니다. 이미 4번이 있는 토요일은 그대로 둡니다. <strong>저장한 순환 설정 기준</strong>이므로 먼저 [저장]을 눌러 주세요.</div>
-          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <input type="month" id="extApplyFrom" class="text-input" style="width:150px;" />
-            <span>~</span>
-            <input type="month" id="extApplyTo" class="text-input" style="width:150px;" />
-            <button class="btn btn-sm btn-primary" onclick="applyExtToRange()">적용</button>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn" onclick="closeModal('extRotModal')">취소</button>
-        <button class="btn btn-primary" onclick="saveExtRot()">저장</button>
-      </div>
-    </div>
-  </div>
 
-  <div id="weekTplModal" class="modal-backdrop">
-    <div class="modal-box" style="max-width:820px;">
-      <div class="modal-header">
-        <div class="modal-title">📅 주간 근무 템플릿 설정 (요일별 기준 인원)</div>
-        <button class="modal-close" onclick="closeModal('weekTplModal')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="helper-banner">
-          달력에 <strong>현재/기준</strong>(예: 오전 2/2)으로 표시되는 <strong>기준 인원</strong>입니다. 토·일은 왼쪽 칸이 <strong>풀당직</strong>(오전+오후 모두 근무) 인원입니다.
-        </div>
-        <div id="weekTplBody"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn" onclick="resetWeekTemplate()">기본값으로 되돌리기</button>
-        <button class="btn" onclick="closeModal('weekTplModal')">취소</button>
-        <button class="btn btn-primary" onclick="saveWeekTemplate()">저장</button>
-      </div>
-    </div>
-  </div>
 
   <div id="excelModal" class="modal-backdrop">
     <div class="modal-box" style="max-width:780px;">
@@ -2432,6 +2431,24 @@
       document.getElementById('infoTabMonthly').classList.toggle('active', tab === 'monthly');
       document.getElementById('infoPaneAnnual').style.display = tab === 'annual' ? 'flex' : 'none';
       document.getElementById('infoPaneMonthly').style.display = tab === 'monthly' ? 'flex' : 'none';
+      const tt = document.getElementById('infoTabTemplate'), tp = document.getElementById('infoPaneTemplate');
+      if (tt) tt.classList.toggle('active', tab === 'template');
+      if (tp) tp.style.display = tab === 'template' ? 'flex' : 'none';
+      if (tab === 'template') renderTemplatePane();
+    }
+    // 근무템플릿 탭은 관리자·팀장만 보임
+    function updateTemplateTabVisibility() {
+      const tt = document.getElementById('infoTabTemplate'); if (!tt) return;
+      const ok = !!(currentUser.isLoggedIn && (isSuperEditor() || currentUser.userId === '김일태'));
+      tt.style.display = ok ? '' : 'none';
+      if (!ok && infoSubTab === 'template') switchInfoTab('annual');
+    }
+    function renderTemplatePane() {
+      renderWeekTemplateTables(getWeekTemplate());
+      renderExtRotRows(extRotList().length ? extRotList() : [{ from: '2027-01-04', order: defaultExtOrder() }]);
+      const ym = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+      const f = document.getElementById('extApplyFrom'), t = document.getElementById('extApplyTo');
+      if (f && !f.value) f.value = ym; if (t && !t.value) t.value = ym;
     }
 
     // 워킹데이: 토·일·공휴일 제외
@@ -3024,6 +3041,7 @@
       ensureMemberParts();
       renderMonthNotes();
       renderHeaderAuth();
+      updateTemplateTabVisibility();
       renderControls();
       renderQuickStampBar();
       renderCalendar();
@@ -3271,12 +3289,6 @@
       }
       return { sun, sat, warns };
     }
-    function openExtRotModal() {
-      if (!requireManagerAuth('토요일 연장 순환 설정')) return;
-      renderExtRotRows(extRotList().length ? extRotList() : [{ from: '2027-01-04', order: defaultExtOrder() }]);
-      { const ym = `${currentYear}-${String(currentMonth).padStart(2, '0')}`; document.getElementById('extApplyFrom').value = ym; document.getElementById('extApplyTo').value = ym; }
-      openModal('extRotModal');
-    }
     function renderExtRotRows(rows) {
       const box = document.getElementById('extRotBody');
       box.innerHTML = rows.map((r, i) => `
@@ -3309,7 +3321,7 @@
       el.innerHTML = rows.map(r => `<div>· ${r.from}부터 1주차: ${r.order.map((c, i) => `${i + 1}주차 ${escapeHtml(c)}번`).join(' → ')} (이후 반복)</div>`).join('');
     }
     function applyExtToRange() {
-      if (!requireManagerAuth('연장근무 적용')) return;
+      if (!requireTemplateAuth('연장근무 적용')) return;
       const f = document.getElementById('extApplyFrom').value, t = document.getElementById('extApplyTo').value;
       if (!/^\d{4}-\d{2}$/.test(f) || !/^\d{4}-\d{2}$/.test(t) || f > t) { alert('적용할 기간(시작 달 ~ 끝 달)을 확인해주세요.'); return; }
       if (!extRotList().length) { alert('저장된 순환 설정이 없습니다. 먼저 [저장]을 눌러 주세요.'); return; }
@@ -3328,7 +3340,7 @@
       alert(msg);
     }
     function saveExtRot() {
-      if (!requireManagerAuth('토요일 연장 순환 저장')) return;
+      if (!requireTemplateAuth('토요일 연장 순환 저장')) return;
       const rows = readExtRotRows();
       if (!rows.length) { alert('적어도 한 줄은 필요합니다.'); return; }
       const codes = new Set(appData.members.filter(m => m.part === 'BASEBALL').map(m => String(m.code || '').trim()));
@@ -3344,8 +3356,9 @@
       for (const r of rows) { if (seen.has(r.from)) { alert(`시작일이 겹칩니다: ${r.from}`); return; } seen.add(r.from); }
       appData.extRotation = rows.sort((a, b) => a.from < b.from ? -1 : 1);
       saveAppData('토요일 연장 순환 설정 변경');
-      closeModal('extRotModal');
       renderAll();
+      renderTemplatePane();
+      alert('✅ 토요일 연장 순환 설정을 저장했습니다.');
     }
 
     function getShiftTargetSlots(shift) {
@@ -4299,6 +4312,13 @@
       return !!m && m.accessLevel === 'ADMIN';
     }
 
+    // 근무템플릿 탭: 관리자 또는 김일태 팀장
+    function requireTemplateAuth(actionName) {
+      if (!requireEditorAuth()) return false;
+      if (isSuperEditor() || currentUser.userId === '김일태') return true;
+      alert(`⚠️ [접근 제한]\n${actionName}은(는) 관리자와 팀장만 사용할 수 있습니다.\n(현재 로그인: ${currentUser.userId})`);
+      return false;
+    }
     // 관리 기능(팀원 관리·근무유형·공휴일): 관리자 권한 보유자
     function requireManagerAuth(actionName = '해당 관리 기능') {
       if (!requireEditorAuth()) return false;
@@ -4722,14 +4742,8 @@
       }).join('');
     }
 
-    function openWeekTemplateModal() {
-      if (!requireManagerAuth('주간 근무 템플릿 설정')) return;
-      renderWeekTemplateTables(getWeekTemplate());
-      openModal('weekTplModal');
-    }
-
     function saveWeekTemplate() {
-      if (!requireManagerAuth('주간 근무 템플릿 저장')) return;
+      if (!requireTemplateAuth('주간 근무 템플릿 저장')) return;
       const out = { SOCCER: {}, BASEBALL: {} };
       document.querySelectorAll('#weekTplBody input').forEach(el => {
         const team = el.dataset.team, dow = el.dataset.dow, kind = el.dataset.kind;
@@ -4738,8 +4752,9 @@
       });
       appData.weekTemplate = out;
       saveAppData('주간 근무 템플릿(요일별 기준 인원) 수정');
-      closeModal('weekTplModal');
       renderAll();
+      renderTemplatePane();
+      alert('✅ 주간 근무 템플릿을 저장했습니다.');
     }
 
     function resetWeekTemplate() {
@@ -5303,7 +5318,7 @@
     /**************************************************************
      * ERP양식 시트: L1(시트명) · B2(이름) → 회사 시스템 입력용 표 (C~K열)
      **************************************************************/
-    function buildErpSheet(sheetName, userName, holidayNums) {
+    function buildErpSheet(sheetName, userName, holidayNums, months) {
       const colL = n => { let t = ''; while (n > 0) { const r = (n - 1) % 26; t = String.fromCharCode(65 + r) + t; n = Math.floor((n - 1) / 26); } return t; };
       const colN = L => L.split('').reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0);
       const ws = {};
@@ -5320,41 +5335,65 @@
       holidayNums.forEach((n, i) => V('L' + (4 + i), n));
       V('N1', '이름', hdrStyle); V('O1', '사번', hdrStyle);
       ERP_SABUN.forEach(([n, c], i) => { V('N' + (i + 2), n); V('O' + (i + 2), c); });
-      const tbl = (c1, c2, h1, h2, rows) => { V(c1 + '1', h1); V(c2 + '1', h2); rows.forEach(([a, b], i) => { V(c1 + (i + 2), a); V(c2 + (i + 2), b); }); };
+      const tbl = (c1, c2, h1, h2, rows) => { rows.forEach(([a, b], i) => { V(c1 + (i + 2), a); V(c2 + (i + 2), b); }); };
       tbl('AR', 'AS', '근무구분명', '근무구분', ERP_GUBUN);
       tbl('AU', 'AV', '근무유형', '근무순번', ERP_SHIFT);
       tbl('AX', 'AY', '시간키', '근무유형', ERP_KEYMAP);
       tbl('BA', 'BB', '휴일여부명', '휴일여부', [['평일', '10'], ['휴일', '20']]);
       const ST = [630, 700, 730, 900, 1030, 1100, 1130, 1300, 1530, 1600, 1630, 1700, 1800, 2200];
       const EN = [700, 730, 900, 1030, 1100, 1130, 1300, 1530, 1600, 1630, 1700, 1800, 2200, 2300];
-      V('BD1', '슬롯시작'); V('BE1', '슬롯종료');
-      for (let i = 0; i < 14; i++) { V('BD' + (i + 2), ST[i]); V('BE' + (i + 2), EN[i]); }
+            for (let i = 0; i < 14; i++) { V('BD' + (i + 2), ST[i]); V('BE' + (i + 2), EN[i]); }
+      // 근무별 정확한 ERP 근무유형 표 (BO: 이름|날짜, BP: ERP 근무유형명) — 제목 없이 2행부터
+      const ERP_BY_TIME = { '06:30~15:30': '(스케줄, IT) 06:30 ~ 15:30', '06:00~15:00': '(스케줄, IT) 06:00 ~ 15:00', '07:30~16:30': '(스케줄) 07:30 ~ 16:30', '14:00~23:00': '(스케줄, IT) 14:00 ~ 23:00', '15:00~00:00': '(스케줄, IT) 15:00 ~ 00:00', '13:00~23:00': '(스케줄, 기타) 13:00 ~ 22:00', '13:00~22:00': '(스케줄, 기타) 13:00 ~ 22:00', '09:00~18:00': '09:00 ~ 18:00', '08:00~17:00': '(유연) 08:00 ~ 17:00', '08:30~17:30': '(유연) 08:30 ~ 17:30', '09:30~18:30': '(유연) 09:30 ~ 18:30', '10:00~19:00': '(유연) 10:00 ~ 19:00', '06:30~23:00': '(상품) 06:30 ~ 23:00' };
+      let bo = 2;
+      try {
+        const sabunNames = new Set(ERP_SABUN.map(x => x[0]));
+        (months || []).forEach(mo => {
+          const nd = new Date(mo.y, mo.m, 0).getDate();
+          for (let d = 1; d <= nd; d++) {
+            const dk = formatDateKey(mo.y, mo.m, d);
+            const day = (appData.schedules || {})[dk];
+            if (!day) continue;
+            appData.members.forEach(mm => {
+              if (!sabunNames.has(mm.name)) return;
+              const sh = (appData.shifts || []).find(x => x.id === day[mm.id]);
+              if (!sh || !sh.displayTime) return;
+              const t = String(sh.displayTime).replace(/\s+/g, '');
+              const nm = ERP_BY_TIME[t];
+              if (!nm) return;
+              V('BO' + bo, mm.name + '|' + (mo.y * 10000 + mo.m * 100 + d));
+              V('BP' + bo, nm);
+              bo++;
+            });
+          }
+        });
+      } catch (e) { console.warn('ERP 근무유형 표 생성 실패', e); }
+      const BOEND = Math.max(bo, 3);
       const IND = a => `INDIRECT("'"&$L$1&"'!"&${a})`;
-      V('BG1', '행'); V('BH1', '열'); V('BI1', '날짜셀'); V('BJ1', '유효날짜');
-      for (let k = 1; k <= 49; k++) {
+            for (let k = 1; k <= 49; k++) {
         const r = k + 1;
         V('BG' + r, 7 + 15 * Math.floor((k - 1) / 7)); V('BH' + r, 3 + 17 * ((k - 1) % 7));
         F('BI' + r, `IFERROR(IF(${IND(`ADDRESS($BG${r},$BH${r})`)}="","",${IND(`ADDRESS($BG${r},$BH${r})`)}*1),"")`);
         F('BJ' + r, `IF($BI${r}="","",IF(AND(${k}<=7,$BI${r}>20),"",IF(AND(${k}>=29,$BI${r}<=14),"",$BI${r})))`);
       }
-      V('BL1', '연도'); F('BM1', '2000+VALUE(LEFT($L$1,FIND("_",$L$1)-1))');
-      V('BL2', '월'); F('BM2', 'VALUE(SUBSTITUTE(MID($L$1,FIND("_",$L$1)+1,9),"월",""))');
-      V('BL3', '일수'); F('BM3', 'DAY(DATE($BM$1,$BM$2+1,0))');
+      V('BL11', '연도'); F('BM11', '2000+VALUE(LEFT($L$1,FIND("_",$L$1)-1))');
+      V('BL12', '월'); F('BM12', 'VALUE(SUBSTITUTE(MID($L$1,FIND("_",$L$1)+1,9),"월",""))');
+      V('BL13', '일수'); F('BM13', 'DAY(DATE($BM$11,$BM$12+1,0))');
       const leg = `INDIRECT("'"&$L$1&"'!$A$2:$GZ$2")`;
-      V('BL4', '순번코드'); F('BM4', 'IFERROR(TRIM(LEFT($BM$5,FIND(":",$BM$5)-1)),"")');
-      V('BL5', '범례'); F('BM5', `IFERROR(INDEX(${leg},MATCH("*:"&$B$2,${leg},0)),"")`);
+      V('BL14', '순번코드'); F('BM14', 'IFERROR(TRIM(LEFT($BM$15,FIND(":",$BM$15)-1)),"")');
+      V('BL15', '범례'); F('BM15', `IFERROR(INDEX(${leg},MATCH("*:"&$B$2,${leg},0)),"")`);
       for (let r = 2; r <= 32; r++) {
         V('R' + r, r - 1);
-        F('Q' + r, `IF($R${r}>$BM$3,"",$BM$1*10000+$BM$2*100+$R${r})`);
+        F('Q' + r, `IF($R${r}>$BM$13,"",$BM$11*10000+$BM$12*100+$R${r})`);
         F('S' + r, `IF($Q${r}="","",IFERROR(MATCH($R${r},$BJ$2:$BJ$50,0),""))`);
         F('T' + r, `IF($S${r}="","",7+15*INT(($S${r}-1)/7))`);
         F('U' + r, `IF($S${r}="","",3+17*MOD($S${r}-1,7))`);
         const rng = IND(`ADDRESS(6,$U${r})&":"&ADDRESS(6,$U${r}+16)`);
-        F('V' + r, `IF($S${r}="","",IFERROR(MATCH($BM$4,${rng},0),IFERROR(MATCH(VALUE($BM$4),${rng},0),"")))`);
+        F('V' + r, `IF($S${r}="","",IFERROR(MATCH($BM$14,${rng},0),IFERROR(MATCH(VALUE($BM$14),${rng},0),"")))`);
         F('W' + r, `IF(OR($S${r}="",$V${r}=""),"",$U${r}+$V${r}-1)`);
         for (let s = 1; s <= 14; s++) {
           const v = `${IND(`ADDRESS($T${r}+${s},$W${r})`)}&""`;
-          F(colL(colN('X') + s - 1) + r, `IF($W${r}="",0,IFERROR(IF(${v}=$BM$4&"",1,IF(${v}="연",2,IF(${v}="대",3,IF(${v}="특",4,IF(${v}="출",5,0))))),0))`);
+          F(colL(colN('X') + s - 1) + r, `IF($W${r}="",0,IFERROR(IF(${v}=$BM$14&"",1,IF(${v}="연",2,IF(${v}="대",3,IF(${v}="특",4,IF(${v}="출",5,0))))),0))`);
         }
         const rg = `$X${r}:$AK${r}`;
         F('AL' + r, `IFERROR(MATCH(1,${rg},0),0)`);
@@ -5371,17 +5410,39 @@
         F('G' + r, `IFERROR(VLOOKUP($F${r},$AR$2:$AS$30,2,0),"")`, ctr);
         F('H' + r, `IFERROR(TEXT(MID($J${r},FIND(":",$J${r},1)-2,5),"hhmm"),"")`, ctr);
         F('I' + r, `IF(RIGHT($J${r},1)="0",SUBSTITUTE(RIGHT($J${r},5),":",""),"")`, ctr);
-        F('J' + r, `IF($Q${r}="","",IF($AN${r}<>"","09:00 ~ 18:00",IF($D${r}="평일",IFERROR(VLOOKUP($AP${r},$AX$2:$AY$30,2,0),"(확인필요)"),"(스케줄) 휴무")))`, ctr);
+        F('J' + r, `IF($Q${r}="","",IF($AN${r}<>"","09:00 ~ 18:00",IF($D${r}="평일",IFERROR(VLOOKUP($B${r}&"|"&$Q${r},$BO$2:$BP$${BOEND},2,0),IFERROR(VLOOKUP($AP${r},$AX$2:$AY$30,2,0),"(확인필요)")),"(스케줄) 휴무")))`, ctr);
         F('K' + r, `IF($Q${r}="","",IFERROR(VLOOKUP(SUBSTITUTE($J${r},"~","~~"),$AU$2:$AV$30,2,0),""))`, ctr);
       }
-      ws['!ref'] = 'A1:BM50';
+      ws['!ref'] = 'A1:BP' + Math.max(50, BOEND);
       const cols = [];
       [10, 10, 11, 9, 12, 10, 12, 10, 10, 28, 10, 30, 2, 10, 9].forEach((w, i) => { cols[i] = { wch: w }; });
       cols[12] = { hidden: true, wch: 2 };
-      for (let c = colN('P'); c <= colN('BM'); c++) cols[c - 1] = { hidden: true, wch: 8 };
+      for (let c = colN('P'); c <= colN('BP'); c++) cols[c - 1] = { hidden: true, wch: 8 };
       ws['!cols'] = cols;
       ws['!freeze'] = { xSplit: 0, ySplit: 1 };
       return ws;
+    }
+
+    // 엑셀 저장: 모든 시트를 기본 확대/축소 비율(zoom%)로 열리게 하고 저장
+    function saveWorkbookZoom(wb, fileName, zoom) {
+      if (typeof JSZip === 'undefined') { XLSX.writeFile(wb, fileName); return; }
+      const data = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+      JSZip.loadAsync(data).then(async zip => {
+        const names = Object.keys(zip.files).filter(n => /^xl\/worksheets\/sheet\d+\.xml$/.test(n));
+        for (const n of names) {
+          let x = await zip.file(n).async('string');
+          x = x.replace(/<sheetView\b([^>]*)>/, (m0, attrs) => {
+            const a = attrs.replace(/\s+zoomScale(Normal)?="[^"]*"/g, '');
+            return `<sheetView zoomScale="${zoom}" zoomScaleNormal="${zoom}"${a}>`;
+          });
+          zip.file(n, x);
+        }
+        const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = fileName;
+        document.body.appendChild(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      }).catch(() => XLSX.writeFile(wb, fileName));
     }
 
     function exportRangeExcel() {
@@ -5403,25 +5464,24 @@
 
       const info = { overflow: [], partialLeave: 0, offGrid: 0 };
       const wb = XLSX.utils.book_new();
+      // ERP양식 시트는 맨 왼쪽(첫 번째)에 둠 — 아래에서 먼저 만들어 넣는다
+      try {
+        const cu = (typeof currentUser !== 'undefined' && currentUser && currentUser.isLoggedIn) ? appData.members.find(mm => mm.name === currentUser.userId || mm.id === currentUser.userId) : null;
+        const yrs = new Set(months.map(mo => String(mo.y)));
+        const hol = (appData.holidays || []).filter(h => String(h.flag || 'O').trim().toUpperCase() !== 'X' && yrs.has(String(h.date).slice(0, 4))).map(h => Number(h.date)).filter(n => n > 0).sort((a, b) => a - b);
+        XLSX.utils.book_append_sheet(wb, buildErpSheet(`${String(months[0].y).slice(-2)}_${months[0].m}월`, cu ? cu.name : '', hol, months), 'ERP양식');
+      } catch (e) { console.warn('ERP양식 시트 생성 실패', e); }
       months.forEach(({ y, m }) => {
         const ws = buildMonthGridSheet(y, m, info);
         XLSX.utils.book_append_sheet(wb, ws, `${String(y).slice(-2)}_${m}월`);
       });
-
-      // ERP양식 시트 (L1에 시트명, B2에 이름을 넣으면 ERP 입력용 표로 바뀜)
-      try {
-        const cu = (typeof currentUser !== 'undefined' && currentUser && currentUser.isLoggedIn) ? appData.members.find(mm => mm.name === currentUser.userId || mm.id === currentUser.userId) : null;
-        const yrs = new Set(months.map(mo => String(mo.y)));
-        const hol = (appData.holidays || []).filter(h => String(h.flag || 'O').trim().toUpperCase() !== 'X' && yrs.has(String(h.date).slice(0, 4))).map(h => Number(h.date)).filter(n => n > 0).sort((a, b) => a - b).slice(0, 37);
-        XLSX.utils.book_append_sheet(wb, buildErpSheet(`${String(months[0].y).slice(-2)}_${months[0].m}월`, cu ? cu.name : '', hol), 'ERP양식');
-      } catch (e) { console.warn('ERP양식 시트 생성 실패', e); }
 
       const pad = n => String(n).padStart(2, '0');
       const first = months[0], last = months[months.length - 1];
       const fileName = months.length === 1
         ? `프로토운영팀_근무표_${first.y}년_${pad(first.m)}월.xlsx`
         : `프로토운영팀_근무표_${first.y}${pad(first.m)}-${last.y}${pad(last.m)}.xlsx`;
-      XLSX.writeFile(wb, fileName);
+      saveWorkbookZoom(wb, fileName, 45);
       const notes = [];
       if (info.overflow.length) notes.push(`⚠️ 축배(알파벳)·야농(숫자)는 각각 8명까지만 담을 수 있어 제외된 팀원: ${[...new Set(info.overflow)].join(', ')}`);
       if (info.partialLeave) notes.push(`ℹ️ 시간 단위 휴가(연차·대휴·특별휴가·출장) ${info.partialLeave}건은 사용한 시간과 가장 가까운 시간 칸만 색으로 표시했습니다. (종일은 '연'/'대'/'특'/'출' 글자와 색)`);
