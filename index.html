@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>프로토운영팀 근무스케줄 (v1119-1)</title>
+  <title>프로토운영팀 근무스케줄 (v1119-2)</title>
   <!-- Pretendard Font -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <!-- SheetJS for Excel Export/Import -->
@@ -1262,6 +1262,7 @@
     .day-top-cell.other-month .day-header { background: #f1f5f9; }
     .part-col-title { white-space: nowrap; font-size: 0.66rem; padding: 1px 0; letter-spacing: -0.04em; }
     .day-part-headers { gap: 2px; }
+    .tpl-wk { display: block; font-size: 0.62rem; font-weight: 700; color: #6b21a8; line-height: 1.1; margin-top: 1px; }
     /* ===== 폰 화면(폭 700px 이하) 전용: 컴퓨터 화면에는 영향 없음 ===== */
     @media (max-width: 700px) {
       .workspace { padding: 4px !important; gap: 6px !important; }
@@ -1271,9 +1272,11 @@
       .weekday-header { padding: 6px 2px !important; font-size: 0.8rem !important; }
       .slot-split-grid { grid-template-columns: minmax(0, 1fr) !important; gap: 3px !important; }
       .slot-part-col.baseball-col { border-left: none !important; padding-left: 0 !important; border-top: 1px dashed rgba(148,163,184,.7); padding-top: 3px; }
-      .slot-part-col.baseball-col::before { content: '⚾ 야구'; display: block; text-align: center; font-size: 0.62rem; font-weight: 800; color: var(--text-secondary); }
+      .slot-part-col.baseball-col::before { content: '⚾ 야구/농구'; display: block; text-align: center; font-size: 0.62rem; font-weight: 800; color: var(--text-secondary); }
       .day-part-headers { grid-template-columns: minmax(0, 1fr) !important; }
       .part-col-title.baseball { display: none !important; }
+      .tm-suffix { display: none; }
+      .tpl-wk { display: none !important; }
       .day-slot-cell { padding: 3px 1px 4px !important; }
       .shift-entry { padding: 1px 0 !important; line-height: 16px !important; letter-spacing: -0.06em !important; }
       .shift-entry .entry-text { font-size: 0.82rem !important; line-height: 16px !important; }
@@ -1518,6 +1521,22 @@
             </div>
             <div style="margin-top:10px; display:flex; gap:8px; justify-content:flex-end;">
               <button class="btn btn-primary" onclick="saveExtRot()">저장</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-card">
+          <div class="panel-header"><div class="panel-title">🔄 템플릿 순환 설정</div></div>
+          <div class="panel-body">
+            <div class="helper-banner" style="margin:0 0 10px 0;">
+              달력의 <strong>'N주차' 아래에 (1) ~ (반복 주)</strong>가 표시됩니다. 컴퓨터 화면에서 <strong>관리자로 로그인했을 때만</strong> 보이며, 휴일과 상관없이 매주 하나씩 올라갑니다. <strong>시작일은 (1)이 시작되는 주의 월요일</strong>입니다.
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <span>시작일</span>
+              <input type="date" id="tplCycleFrom" class="text-input" style="width:160px;" />
+              <span>반복 주</span>
+              <input type="number" id="tplCycleWeeks" class="text-input" min="1" max="52" step="1" style="width:80px;" />
+              <span>주</span>
+              <button class="btn btn-primary" onclick="saveTplCycle()">저장</button>
             </div>
           </div>
         </div>
@@ -2468,6 +2487,8 @@
     function renderTemplatePane() {
       renderWeekTemplateTables(getWeekTemplate());
       renderExtRotRows(extRotList().length ? extRotList() : [{ from: '2027-01-04', order: defaultExtOrder() }]);
+      const tc = tplCycle(); const tf = document.getElementById('tplCycleFrom'), tw = document.getElementById('tplCycleWeeks');
+      if (tf) tf.value = tc.from; if (tw) tw.value = tc.weeks;
       const ym = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
       const f = document.getElementById('extApplyFrom'), t = document.getElementById('extApplyTo');
       if (f && !f.value) f.value = ym; if (t && !t.value) t.value = ym;
@@ -3843,7 +3864,13 @@
         // [Row 1] 상단 헤더 줄: 좌측 'N주차' + 일~토 날짜/인원수/파트헤더
         const axisTop = document.createElement('div');
         axisTop.className = 'shift-axis-top';
-        axisTop.innerHTML = `<span>${w + 1}주차</span>`;
+        let tplTag = '';
+        try {
+          const refD = weekDays.find(x => x && x.dateStr);
+          const tn = refD ? templateWeekNo(refD.dateStr, refD.dow) : 0;
+          if (tn) tplTag = `<span class="tpl-wk" title="근무 템플릿 ${tn}주차">(${tn})</span>`;
+        } catch (e) {}
+        axisTop.innerHTML = `<span>${w + 1}주차</span>${tplTag}`;
         weekRow.appendChild(axisTop);
 
         preparedDays.forEach((dObj, colIdx) => {
@@ -3865,8 +3892,8 @@
                 <span class="day-number">${dObj.dayNum}</span>${dObj.isHoliday ? `<span class="holiday-badge" title="${escapeHtml(dObj.holidayName || '공휴일')}">공휴일</span>` : ''}
               </div>
               <div class="day-part-headers">
-                <div class="part-col-title soccer">⚽ 축구/배구팀</div>
-                <div class="part-col-title baseball">⚾ 야구/농구팀</div>
+                <div class="part-col-title soccer">⚽ 축구/배구<span class="tm-suffix">팀</span></div>
+                <div class="part-col-title baseball">⚾ 야구/농구<span class="tm-suffix">팀</span></div>
               </div>
             `;
             topCell.onclick = () => handleDayCellClick(dObj.dateStr, dObj.dayNum);
@@ -4335,6 +4362,36 @@
       if (currentUser.userId === '김강산') return true;
       const m = appData.members.find(x => x.name === currentUser.userId);
       return !!m && m.accessLevel === 'ADMIN';
+    }
+
+    // ===== 템플릿 순환 (주차 표시용): 시작 월요일부터 N주 반복 =====
+    function tplCycle() {
+      const c = appData.tplCycle;
+      if (c && /^\d{4}-\d{2}-\d{2}$/.test(c.from) && Number(c.weeks) >= 1) return { from: c.from, weeks: Math.floor(Number(c.weeks)) };
+      return { from: '2027-01-04', weeks: 6 };
+    }
+    // 해당 날짜가 속한 주(월~일)의 템플릿 주차 번호(1~N). 관리자로 로그인하지 않았거나 시작 전이면 0
+    function templateWeekNo(dateStr, dow) {
+      if (!(currentUser.isLoggedIn && isSuperEditor())) return 0;
+      const c = tplCycle();
+      const d = new Date(dateStr + 'T00:00:00');
+      const mon = new Date(d.getTime() - ((dow + 6) % 7) * 86400000);
+      const st = new Date(c.from + 'T00:00:00');
+      const diff = Math.round((mon - st) / (7 * 86400000));
+      if (diff < 0) return 0;
+      return (diff % c.weeks) + 1;
+    }
+    function saveTplCycle() {
+      if (!requireTemplateAuth('템플릿 순환 설정 저장')) return;
+      const from = document.getElementById('tplCycleFrom').value;
+      const weeks = Number(document.getElementById('tplCycleWeeks').value);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) { alert('시작일을 날짜로 입력해주세요.'); return; }
+      if (new Date(from + 'T00:00:00').getDay() !== 1) { alert(`${from}은(는) 월요일이 아닙니다. (1)이 시작되는 주의 월요일을 입력해주세요.`); return; }
+      if (!Number.isInteger(weeks) || weeks < 1 || weeks > 52) { alert('반복 주는 1~52 사이의 정수로 입력해주세요.'); return; }
+      appData.tplCycle = { from, weeks };
+      saveAppData(`템플릿 순환 설정 변경 (${from}, ${weeks}주 반복)`);
+      renderAll();
+      alert('✅ 템플릿 순환 설정을 저장했습니다.');
     }
 
     // 근무템플릿 탭: 관리자 또는 김일태 팀장
