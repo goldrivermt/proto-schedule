@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>프로토운영팀 근무스케줄 (v1118-1)</title>
+  <title>프로토운영팀 근무스케줄 (v1118-2)</title>
   <!-- Pretendard Font -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <!-- SheetJS for Excel Export/Import -->
@@ -2665,7 +2665,7 @@
       mins = Math.abs(mins);
       const hh = Math.floor(mins / 60), mm = mins % 60;
       if (!hh && !mm) return '0h';
-      return sign + (hh ? hh + 'h' : '') + (mm ? mm + 'm' : '');
+      return sign + (hh ? hh + 'h' : '') + (hh && mm ? '\u2009' : '') + (mm ? mm + 'm' : '');
     }
     // '14h30m' / '14:30' / '70m' / '1h' / '14.5'(소수는 시간) → 시간 숫자. 빈칸이면 null, 형식이 틀리면 NaN
     function parseHM(str) {
@@ -2766,9 +2766,12 @@
       let stdHoursSum = 0, stdDaysSum = 0;
       for (let m = 1; m <= 12; m++) { const wd = countWorkingDays(year, m); stdHoursSum += wd * 8; stdDaysSum += wd; }
       // 개인별 기준시간: 휴직·입사 전 기간의 워킹데이는 제외
+      // 근무가 한 명이라도 입력된 마지막 달까지만 계산 (1월부터 그 달까지)
+      let lastInputMonth = 0;
+      perMonth.forEach(pm => { if (pm.has) lastInputMonth = pm.m; });
       const personalStd = members.map(mem => {
         let h = 0;
-        for (let m = 1; m <= 12; m++) h += memberMonthInfo(mem, year, m).workDays * 8;
+        for (let m = 1; m <= lastInputMonth; m++) h += memberMonthInfo(mem, year, m).workDays * 8;
         return h;
       });
       let rowsHtml = '';
@@ -2818,7 +2821,7 @@
             <tr><th class="ms-orange" colspan="3">${year - 1}년 잔여대휴시간 (직접 입력)</th>${inputTds('leave')}</tr>
             ${rowsHtml}
             <tr><th class="ms-green">연 합계</th><td class="ms-green">${fmtHM(stdHoursSum)}</td><td class="ms-green">${stdDaysSum}</td>${sumTds}</tr>
-            <tr><th class="ms-label" colspan="3">개인 기준시간 (휴직·입사 반영)</th>${personalStd.map(v => `<td>${msFmt(v)}</td>`).join('')}</tr>
+            <tr><th class="ms-label" colspan="3">개인 기준시간 (근무입력 기준)</th>${personalStd.map(v => `<td>${msFmt(v)}</td>`).join('')}</tr>
             <tr><th class="ms-orange" colspan="3">필수 대휴 신청 시간</th>${needTds}</tr>
             <tr><th class="ms-label" colspan="3">잔여 대휴 현황</th>${leaveTds}</tr>
           </tbody>
@@ -2827,7 +2830,7 @@
           <div style="display:flex; gap:4px; align-items:flex-start;">
             <span style="white-space:nowrap;">※ 월별 값 =</span>
             <span>실제 근무시간 + 연차 사용 시간 + 대휴 사용 시간이며 초과근무는 제외됩니다. 초과근무시간은 월별로 모아 잔여 대휴 현황에 더해지고, 사용한 대휴 시간은 잔여 대휴 현황에서 빠집니다. 연 합계 = 월별 합 + 전년 잔여기준시간, 기준시간·기준근로일은 1~12월 전체 합입니다.<span style="display:block; height:5px;"></span>
-            필수 대휴 신청 시간은 부족하면 -, 넘치면 +로 표시됩니다. (휴직·입사 전 기간의 기준시간은 빼고 계산하며, 중간에 복직·입사한 달은 값 뒤에 *가 붙습니다.)</span>
+            필수 대휴 신청 시간은 부족하면 -, 넘치면 +로 표시됩니다. (개인 기준시간·필수 대휴는 근무가 입력된 마지막 달(${lastInputMonth ? lastInputMonth + '월' : '없음'})까지만 계산하고, 휴직·입사 전 기간의 기준시간은 빼며, 중간에 복직·입사한 달은 값 뒤에 *가 붙습니다.)</span>
           </div>
         </div>`;
 
