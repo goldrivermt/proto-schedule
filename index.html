@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>프로토운영팀 근무스케줄 (v1117-4)</title>
+  <title>프로토운영팀 근무스케줄 (v1118-1)</title>
   <!-- Pretendard Font -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <!-- SheetJS for Excel Export/Import -->
@@ -6065,7 +6065,8 @@
         return;
       }
       const before = canon(appData);
-      const remoteWins = !cloudBase && (Number(appData.updatedAt) || 0) < (Number(remote.updatedAt) || 0);
+      // 이 기기가 클라우드를 처음 받는 경우(새 주소·새 브라우저·저장 기록 없음): 클라우드 내용을 우선 — 기본값이 클라우드를 덮어쓰지 않게 함
+      const remoteWins = !cloudBase;
       const M = mergeFlat(cloudBase, appData, remote, remoteWins);
       sanitizeFlat(M);
       const patch = diffPatch(remote, M);
