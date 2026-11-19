@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>프로토운영팀 근무스케줄 (v1119-2)</title>
+  <title>프로토운영팀 근무스케줄 (v1120-1)</title>
   <!-- Pretendard Font -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <!-- SheetJS for Excel Export/Import -->
@@ -6135,6 +6135,7 @@
     }
 
     let cloudBusy = false, cloudAgain = false;
+    let cloudSeen = null, cloudLastFull = 0; // 마지막으로 확인한 클라우드 변경 표시 / 마지막 전체 동기화 시각
     async function cloudSyncOnce() {
       const url = `${firebaseDbUrl}/shiftSchedulerData.json`;
       const res = await fetch(url, { cache: 'no-store' });
@@ -6152,7 +6153,10 @@
       const M = mergeFlat(cloudBase, appData, remote, remoteWins);
       sanitizeFlat(M);
       const patch = diffPatch(remote, M);
-      if (Object.keys(patch).length) {
+      const didPatch = Object.keys(patch).length > 0;
+      if (didPatch) {
+        // 변경 표시(syncRev): 다른 기기가 '바뀐 것이 있는지'만 가볍게 확인할 때 쓰는 값. 올릴 때마다 새 값으로 바꾼다.
+        M.syncRev = patch.syncRev = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
         const r = await fetch(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
         if (!r.ok) throw new Error('PATCH ' + r.status);
       }
@@ -6161,6 +6165,10 @@
       Object.assign(appData, merged);
       ensureAppDefaults();
       cloudBase = cloneJ(merged); saveCloudBase();
+      // 올린 직후에는 '본 것으로 표시'하지 않고 한 번 더 전체 확인 (내가 올리는 사이 다른 사람이 올린 변경을 놓치지 않기 위해)
+      if (didPatch) { cloudSeen = null; cloudAgain = true; }
+      else cloudSeen = { u: String(remote.updatedAt || ''), r: String(remote.syncRev || '') };
+      cloudLastFull = Date.now();
       if (purgeRetiredShifts()) cloudAgain = true; // 예전 버전 기기가 되살린 폐지 근무유형 정리 → 다음 주기에 삭제 반영
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); } catch (e) {}
       if (canon(appData) !== before) renderAll();
@@ -6177,18 +6185,38 @@
       } finally { cloudBusy = false; }
     }
     function pushToCloud() { return cloudSync(); }
-    function pullFromCloud() { return cloudSync(); }
+    // 5초마다: 전체 데이터 대신 '마지막 수정 시각'만 아주 작게 확인 → 바뀌었을 때만 전체 동기화 (Firebase 다운로드 사용량 절감)
+    async function pullFromCloud(force) {
+      if (!firebaseDbUrl) return;
+      if (cloudBusy) { cloudAgain = true; return; }
+      try {
+        const dirty = !cloudBase || canon(appData) !== canon(cloudBase);          // 내 쪽에 아직 못 올린 변경이 있음
+        const stale = Date.now() - cloudLastFull > 5 * 60 * 1000;                   // 5분에 한 번은 안전하게 전체 확인
+        if (force === true || dirty || stale || !cloudSeen) return cloudSync();
+        const base = `${firebaseDbUrl}/shiftSchedulerData`;
+        const [a, b] = await Promise.all([
+          fetch(base + '/updatedAt.json', { cache: 'no-store' }),
+          fetch(base + '/syncRev.json', { cache: 'no-store' })
+        ]);
+        if (!a.ok || !b.ok) throw new Error('PROBE ' + a.status + '/' + b.status);
+        const u = String(await a.json() || ''), r = String(await b.json() || '');
+        if (u !== cloudSeen.u || r !== cloudSeen.r) return cloudSync();
+        updateSyncIndicator(true);
+      } catch (e) {
+        console.warn('클라우드 확인 실패(다음 주기에 다시 시도):', e);
+      }
+    }
 
     function startCloudSync() {
       updateSyncIndicator(true);
-      pullFromCloud();
+      pullFromCloud(true);
       if (cloudSyncTimer) clearInterval(cloudSyncTimer);
-      cloudSyncTimer = setInterval(pullFromCloud, 5000);
+      cloudSyncTimer = setInterval(() => { if (!document.hidden) pullFromCloud(); }, 5000);
       if (!window.__cloudVisHooked) {
         window.__cloudVisHooked = true;
         document.addEventListener('visibilitychange', () => { if (!document.hidden) pullFromCloud(); });
         window.addEventListener('focus', () => pullFromCloud());
-        window.addEventListener('online', () => pullFromCloud());
+        window.addEventListener('online', () => pullFromCloud(true));
       }
     }
 
