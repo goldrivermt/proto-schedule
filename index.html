@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>프로토운영팀 근무스케줄 (v1121-1)</title>
+  <title>프로토운영팀 근무스케줄 (v1121-2)</title>
   <!-- Pretendard Font -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <!-- SheetJS for Excel Export/Import -->
@@ -3256,7 +3256,7 @@
       getSortedShifts().forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.id;
-        opt.textContent = `${s.order}. ${s.officialName}`;
+        opt.textContent = `${s.order}. ${s.ext ? String(s.officialName).replace(/\s*\(.*?\)\s*$/, '').trim() + '(연장)' : s.officialName}`;
         shiftFilter.appendChild(opt);
       });
       if ([...shiftFilter.options].some(o => o.value === prevShiftVal)) {
@@ -3298,7 +3298,7 @@
       chipsShifts.forEach(s => {
         const chip = document.createElement('div');
         chip.className = `stamp-chip ${s.colorClass} ${quickStampShiftId === s.id ? 'selected' : ''}`;
-        chip.textContent = s.displayTime;
+        chip.textContent = s.displayTime + (s.ext ? '(연장)' : '');
         chip.title = `${s.officialName} (실근무 ${fmtHM(s.workHours)} / 초과 ${fmtHM(s.overtimeHours)})`;
         chip.onclick = () => {
           if (quickStampShiftId === s.id) {
