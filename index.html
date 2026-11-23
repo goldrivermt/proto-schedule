@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>프로토운영팀 근무스케줄 (v1121-2)</title>
+  <title>프로토운영팀 근무스케줄 (v1122-1)</title>
   <!-- Pretendard Font -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <!-- SheetJS for Excel Export/Import -->
@@ -1632,14 +1632,19 @@
           <div id="loginMemberList" style="display:none; margin-top:6px; max-height:220px; overflow-y:auto; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:#fff;"></div>
         </div>
         <div>
-          <label class="filter-label" style="display:block; margin-bottom:8px; font-size:0.92rem; font-weight:700;">팀 편집 PIN 번호 (초기 기본값: <code>1234</code>)</label>
+          <label class="filter-label" style="display:block; margin-bottom:8px; font-size:0.92rem; font-weight:700;">본인 PIN 번호</label>
           <input type="password" id="loginPinInput" class="text-input" style="width:100%; padding:10px 12px; font-size:0.95rem;" placeholder="PIN 번호 입력" onkeydown="if(event.key==='Enter') submitLogin()" />
         </div>
         <details style="font-size:0.82rem; color:var(--text-secondary); margin-top:4px;">
-          <summary style="cursor:pointer; font-weight:600;">팀 편집 PIN 번호 변경하기</summary>
-          <div style="margin-top:8px; display:flex; gap:6px;">
-            <input type="password" id="newPinInput" class="text-input" style="flex:1; padding:8px 10px;" placeholder="새 PIN 번호 입력" />
-            <button class="btn btn-sm" onclick="changeTeamPin()">PIN 변경</button>
+          <summary style="cursor:pointer; font-weight:600;">내 PIN 번호 변경하기</summary>
+          <div style="margin-top:8px; display:flex; flex-direction:column; gap:6px;">
+            <div style="font-size:0.78rem; color:var(--text-muted);">위에서 선택한 <strong>본인 이름(ID)</strong>의 PIN을 바꿉니다. 로그인하지 않아도 현재 PIN만 맞으면 변경됩니다.</div>
+            <input type="password" id="curPinInput" class="text-input" style="padding:8px 10px;" placeholder="현재 PIN 번호" />
+            <input type="password" id="newPinInput" class="text-input" style="padding:8px 10px;" placeholder="새 PIN 번호 (4자리 이상)" />
+            <div style="display:flex; gap:6px;">
+              <input type="password" id="newPinInput2" class="text-input" style="flex:1; padding:8px 10px;" placeholder="새 PIN 번호 확인" onkeydown="if(event.key==='Enter') changeMyPin()" />
+              <button class="btn btn-sm" onclick="changeMyPin()">PIN 변경</button>
+            </div>
           </div>
         </details>
       </div>
@@ -2410,6 +2415,8 @@
 
       if (firebaseDbUrl) {
         startCloudSync();
+      } else if (migratePinReset()) {
+        saveAppData();   // 클라우드를 쓰지 않는 경우: 이 기기에서 한 번만 PIN 초기화
       }
 
       renderAll();
@@ -4612,6 +4619,55 @@
       closeModal('loginModal');
     }
 
+    // ===== 개인별 PIN (처음에는 모두 1234, 본인이 바꾸면 본인만 변경) =====
+    const DEFAULT_PIN = '1234';
+    // SHA-256 (동기 방식). 클라우드에 PIN 원문이 아닌 변환값만 저장하기 위해 사용
+    function sha256Hex(str) {
+      const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+      const bytes = Array.from(new TextEncoder().encode(str));
+      const bitLen = bytes.length * 8;
+      bytes.push(0x80);
+      while (bytes.length % 64 !== 56) bytes.push(0);
+      for (let i = 7; i >= 0; i--) bytes.push(i >= 4 ? 0 : (bitLen >>> (i * 8)) & 0xff);
+      const H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+      const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+      for (let off = 0; off < bytes.length; off += 64) {
+        const w = new Array(64);
+        for (let i = 0; i < 16; i++) w[i] = (bytes[off + i*4] << 24) | (bytes[off + i*4 + 1] << 16) | (bytes[off + i*4 + 2] << 8) | bytes[off + i*4 + 3];
+        for (let i = 16; i < 64; i++) {
+          const s0 = rotr(w[i-15], 7) ^ rotr(w[i-15], 18) ^ (w[i-15] >>> 3);
+          const s1 = rotr(w[i-2], 17) ^ rotr(w[i-2], 19) ^ (w[i-2] >>> 10);
+          w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
+        }
+        let [a, b, c, d, e, f, g, h] = H;
+        for (let i = 0; i < 64; i++) {
+          const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+          const ch = (e & f) ^ (~e & g);
+          const t1 = (h + S1 + ch + K[i] + w[i]) | 0;
+          const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+          const mj = (a & b) ^ (a & c) ^ (b & c);
+          const t2 = (S0 + mj) | 0;
+          h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+        }
+        H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+        H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+      }
+      return H.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('');
+    }
+    function pinHashOf(name, pin) { return sha256Hex('proto-shift-pin|' + name + '|' + pin); }
+    function findMemberByName(name) { return (appData.members || []).find(m => m.name === name); }
+    function checkMemberPin(member, pin) {
+      if (!member) return false;
+      return member.pinHash ? member.pinHash === pinHashOf(member.name, pin) : pin === DEFAULT_PIN;
+    }
+    // 한 번만: 모든 팀원의 PIN을 처음 상태(1234)로 되돌림 (개인별 PIN 도입)
+    function migratePinReset() {
+      if (appData.pinResetV === 1) return false;
+      (appData.members || []).forEach(m => { delete m.pinHash; });
+      appData.pinResetV = 1;
+      return true;
+    }
+
     function submitLogin() {
       const userId = document.getElementById('loginCustomId').value.trim();
       const pin = document.getElementById('loginPinInput').value.trim();
@@ -4620,8 +4676,13 @@
         alert('본인 이름(ID)을 선택하거나 입력해주세요.');
         return;
       }
-      if (pin !== appData.pin) {
-        alert('팀 편집 PIN 번호가 일치하지 않습니다. (초기 기본값: 1234)');
+      const member = findMemberByName(userId);
+      if (!member) {
+        alert('팀원 목록에 없는 이름입니다. 목록에서 본인 이름을 선택해주세요.');
+        return;
+      }
+      if (!checkMemberPin(member, pin)) {
+        alert('PIN 번호가 일치하지 않습니다.');
         return;
       }
 
@@ -4633,6 +4694,10 @@
       saveAppData(`열람 및 편집 로그인`, userId);
       closeModal('loginModal');
       renderAll();
+      if (!member.pinHash && !sessionStorage.getItem('SHIFT_PIN_NUDGE')) {
+        sessionStorage.setItem('SHIFT_PIN_NUDGE', '1');
+        setTimeout(() => alert('아직 초기 PIN 번호를 사용 중입니다.\n로그인 창의 [내 PIN 번호 변경하기]에서 본인만 아는 번호로 바꿔주세요.'), 300);
+      }
     }
 
     function logoutEditor() {
@@ -4645,17 +4710,35 @@
       openLoginModal(true);
     }
 
-    function changeTeamPin() {
-      if (!requireAdminAuth('팀 PIN 번호 변경')) return;
-      const newPin = document.getElementById('newPinInput').value.trim();
-      if (!newPin || newPin.length < 4) {
-        alert('새 PIN 번호를 4자리 이상 입력해주세요.');
-        return;
-      }
-      appData.pin = newPin;
-      document.getElementById('newPinInput').value = '';
-      saveAppData(`팀 편집 PIN 번호 변경`);
-      alert('팀 편집 PIN 번호가 변경되었습니다.');
+    function changeMyPin() {
+      const userId = document.getElementById('loginCustomId').value.trim();
+      const cur = document.getElementById('curPinInput').value.trim();
+      const n1 = document.getElementById('newPinInput').value.trim();
+      const n2 = document.getElementById('newPinInput2').value.trim();
+      const member = findMemberByName(userId);
+      if (!userId) { alert('위에서 본인 이름(ID)을 먼저 선택해주세요.'); return; }
+      if (!member) { alert('팀원 목록에 없는 이름입니다. 목록에서 본인 이름을 선택해주세요.'); return; }
+      if (!checkMemberPin(member, cur)) { alert('현재 PIN 번호가 일치하지 않습니다.'); return; }
+      if (!n1 || n1.length < 4) { alert('새 PIN 번호를 4자리 이상 입력해주세요.'); return; }
+      if (n1 === DEFAULT_PIN) { alert('초기 PIN(1234)과 다른 번호로 정해주세요.'); return; }
+      if (n1 !== n2) { alert('새 PIN 번호와 확인 번호가 서로 다릅니다.'); return; }
+      member.pinHash = pinHashOf(member.name, n1);
+      ['curPinInput', 'newPinInput', 'newPinInput2'].forEach(id => { document.getElementById(id).value = ''; });
+      saveAppData(`${member.name} PIN 번호 변경`, member.name);
+      alert('PIN 번호가 변경되었습니다. 다음 로그인부터 새 번호를 사용하세요.');
+    }
+
+    // 관리자: 팀원 PIN을 초기값(1234)으로 되돌리기
+    function resetMemberPin(memberId) {
+      if (!requireManagerAuth('팀원 PIN 초기화')) return;
+      const real = appData.members.find(m => m.id === memberId);
+      if (!real) return;
+      if (!confirm(`${real.name} 님의 PIN을 초기값(1234)으로 되돌릴까요?`)) return;
+      delete real.pinHash;
+      const dm = (typeof memberDraft !== 'undefined' && memberDraft) ? memberDraft.find(m => m.id === memberId) : null;
+      if (dm) delete dm.pinHash;
+      saveAppData(`${real.name} PIN 번호 변경(초기화)`);
+      alert(`${real.name} 님의 PIN이 초기값으로 되돌아갔습니다.`);
     }
 
     /**************************************************************
@@ -4747,6 +4830,7 @@
             </select>
           </td>` : ''}
           <td style="text-align:right;">
+            <button class="btn btn-sm" title="이 팀원의 PIN을 초기값(1234)으로 되돌립니다" onclick="resetMemberPin('${m.id}')">PIN 초기화</button>
             <button class="btn btn-sm btn-danger" onclick="removeMember('${m.id}')">삭제</button>
           </td>
         `;
@@ -6320,8 +6404,10 @@
       Object.keys(appData).forEach(k => { delete appData[k]; });
       Object.assign(appData, merged);
       ensureAppDefaults();
+      const baseBeforeMigrations = cloneJ(mergedBase);   // 일회성 정리 전의 상태를 기준으로 삼아야 그 정리가 클라우드에도 올라감
       try { migrateLegacyAuditLogs(); } catch (e) { console.warn(e); }
-      cloudBase = cloneJ(mergedBase); saveCloudBase();
+      if (migratePinReset()) saveAppData();
+      cloudBase = baseBeforeMigrations; saveCloudBase();
       if (editedDuringSync) cloudAgain = true;
       // 올린 직후에는 '본 것으로 표시'하지 않고 한 번 더 전체 확인 (내가 올리는 사이 다른 사람이 올린 변경을 놓치지 않기 위해)
       if (didPatch || editedDuringSync) { cloudSeen = null; cloudAgain = true; }
