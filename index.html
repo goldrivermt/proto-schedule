@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>프로토운영팀 근무스케줄 (v1122-1)</title>
+  <title>프로토운영팀 근무스케줄 (v1122-2)</title>
   <!-- Pretendard Font -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <!-- SheetJS for Excel Export/Import -->
@@ -2957,8 +2957,9 @@
     const AUDIT_QUEUE_KEY = 'DEPT_SHIFT_AUDIT_QUEUE_V1';
     const AUDIT_LOCAL_KEY = 'DEPT_SHIFT_AUDIT_LOCAL_V1';
     const AUDIT_MAX_PER_MONTH = 300;
-    // 남기는 이력: 로그인, PIN 변경, 근무 변경(입력·삭제·변경·일괄 작업)
-    const AUDIT_LOGGABLE = /(로그인$|PIN 번호 변경|근무\(.*\) (입력|삭제|변경)|근무 전체 삭제|초안으로 원복|일괄 배정|전체 스케줄 초기화|엑셀 업로드 반영|연장근무 적용)/;
+    // 남기는 이력: 근무 스케줄 편집(입력·삭제·변경·일괄 작업)만. 로그인·PIN 변경은 남기지 않음
+    const AUDIT_LOGGABLE = /(근무\(.*\) (입력|삭제|변경)|근무 전체 삭제|초안으로 원복|일괄 배정|전체 스케줄 초기화|엑셀 업로드 반영|연장근무 적용)/;
+    const AUDIT_NOISE = /(로그인$|로그아웃$|PIN 번호 변경)/;   // 이미 쌓여 있는 로그인·PIN 이력(정리 대상)
     function auditYM(t) { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; }
     function auditTimeText(t) {
       const d = new Date(t);
@@ -3017,13 +3018,19 @@
       if (firebaseDbUrl) {
         const r = await fetch(`${firebaseDbUrl}/shiftSchedulerLogs/${ym}.json`, { cache: 'no-store' });
         if (!r.ok) throw new Error('LOG GET ' + r.status);
-        list = Object.values((await r.json()) || {});
+        const raw = (await r.json()) || {};
+        const noiseKeys = Object.keys(raw).filter(k => raw[k] && AUDIT_NOISE.test(String(raw[k].a || '')));
+        if (noiseKeys.length) {   // 예전에 쌓인 로그인·PIN 이력을 클라우드에서도 정리
+          const patch = {}; noiseKeys.forEach(k => { patch[k] = null; });
+          fetch(`${firebaseDbUrl}/shiftSchedulerLogs/${ym}.json`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) }).catch(() => {});
+        }
+        list = Object.keys(raw).filter(k => !noiseKeys.includes(k)).map(k => raw[k]);
       } else {
         list = (readJsonLS(AUDIT_LOCAL_KEY, {})[ym] || []).slice();
       }
       // 아직 올라가지 못하고 대기 중인 이력도 함께 표시
       readJsonLS(AUDIT_QUEUE_KEY, []).forEach(e => { if (auditYM(e.t) === ym) list.push(e); });
-      return list.filter(e => e && e.t).sort((a, b) => b.t - a.t).slice(0, AUDIT_MAX_PER_MONTH);
+      return list.filter(e => e && e.t && !AUDIT_NOISE.test(String(e.a || ''))).sort((a, b) => b.t - a.t).slice(0, AUDIT_MAX_PER_MONTH);
     }
     // 예전 방식(데이터 안의 최근 60건)으로 남아 있던 이력을 월별 이력으로 한 번 옮김
     function migrateLegacyAuditLogs() {
